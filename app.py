@@ -10,9 +10,14 @@ def clean_text_for_bert(text):
     text = re.sub(r'\s+', ' ', text).strip()  # Remove extra spaces
     return text
 
+# Ensure that safetensors package is installed
+from safetensors import safe_open
+
 # Load tokenizer and model
 tokenizer = BertTokenizer.from_pretrained("bert_tokenizer")
-model = BertForSequenceClassification.from_pretrained("bert_model")
+model = BertForSequenceClassification.from_pretrained("bert_model",
+                                                      revision="main", 
+                                                     from_safetensors=True)
 model.eval()
 
 # Reverse label mapping
