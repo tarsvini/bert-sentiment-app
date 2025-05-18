@@ -15,9 +15,7 @@ from safetensors import safe_open
 
 # Load tokenizer and model
 tokenizer = BertTokenizer.from_pretrained("bert_tokenizer")
-model = BertForSequenceClassification.from_pretrained("bert_model",
-                                                      revision="main", 
-                                                     from_safetensors=True)
+model = BertForSequenceClassification.from_pretrained("bert_model")
 model.eval()
 
 # Reverse label mapping
