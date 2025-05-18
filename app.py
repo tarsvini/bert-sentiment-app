@@ -3,6 +3,9 @@ from transformers import BertTokenizer, BertForSequenceClassification
 import torch
 import re
 
+# ✅ Page config must be set immediately after imports
+st.set_page_config(page_title="Haircare Sentiment Analyzer", layout="centered")
+
 # Clean input review text
 def clean_text_for_bert(text):
     text = text.lower()
@@ -11,7 +14,7 @@ def clean_text_for_bert(text):
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-# Load tokenizer and model only once using Streamlit cache
+# Load tokenizer and model only once
 @st.cache_resource
 def load_model():
     tokenizer = BertTokenizer.from_pretrained("./bert_tokenizer", local_files_only=True)
@@ -25,7 +28,6 @@ tokenizer, model = load_model()
 label_map = {0: "Positive", 1: "Negative", 2: "Neutral"}
 
 # App UI
-st.set_page_config(page_title="Haircare Sentiment Analyzer", layout="centered")
 st.title("💬 Haircare Product Review Sentiment Analysis")
 
 review = st.text_area("📝 Enter a product review below:")
