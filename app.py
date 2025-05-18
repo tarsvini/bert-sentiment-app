@@ -1,21 +1,28 @@
 import streamlit as st
-from transformers import BertTokenizer, BertForSequenceClassification
+from transformers import BertTokenizer, BertForSequenceClassification, BertConfig
+from safetensors.torch import load_file
 import torch
 import re
+import os
 
 def clean_text_for_bert(text):
-    text = text.lower()  # Lowercase
-    text = re.sub(r"http\S+", "", text)  # Remove URLs
-    text = re.sub(r"[^a-zA-Z\s]", "", text)  # Remove punctuation, keep only letters
-    text = re.sub(r'\s+', ' ', text).strip()  # Remove extra spaces
+    text = text.lower()
+    text = re.sub(r"http\S+", "", text)
+    text = re.sub(r"[^a-zA-Z\s]", "", text)
+    text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-# Ensure that safetensors package is installed
-from safetensors import safe_open
+# Load tokenizer
+tokenizer = BertTokenizer.from_pretrained(
+    "./bert_tokenizer",
+    local_files_only=True
+)
 
-# Load tokenizer and model
-tokenizer = BertTokenizer.from_pretrained("./bert_tokenizer", local_files_only=True)
-model = BertForSequenceClassification.from_pretrained("./bert_model", local_files_only=True)
+# Load model config and weights manually from .safetensors
+config = BertConfig.from_pretrained("./bert_model")
+model = BertForSequenceClassification(config)
+state_dict = load_file("./bert_model/model.safetensors")
+model.load_state_dict(state_dict)
 model.eval()
 
 # Reverse label mapping
@@ -33,6 +40,7 @@ if st.button("🔍 Analyze Sentiment"):
     else:
         cleaned_review = clean_text_for_bert(review)
         inputs = tokenizer(cleaned_review, return_tensors="pt", truncation=True, padding=True, max_length=128)
+
         with torch.no_grad():
             outputs = model(**inputs)
             probs = torch.nn.functional.softmax(outputs.logits, dim=1)
