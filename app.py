@@ -1,10 +1,9 @@
 import streamlit as st
-from transformers import BertTokenizer, BertForSequenceClassification, BertConfig
-from safetensors.torch import load_file
+from transformers import BertTokenizer, BertForSequenceClassification
 import torch
 import re
-import os
 
+# Clean input review text
 def clean_text_for_bert(text):
     text = text.lower()
     text = re.sub(r"http\S+", "", text)
@@ -12,20 +11,17 @@ def clean_text_for_bert(text):
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-# Load tokenizer
-tokenizer = BertTokenizer.from_pretrained(
-    "./bert_tokenizer",
-    local_files_only=True
-)
+# Load tokenizer and model only once using Streamlit cache
+@st.cache_resource
+def load_model():
+    tokenizer = BertTokenizer.from_pretrained("./bert_tokenizer", local_files_only=True)
+    model = BertForSequenceClassification.from_pretrained("./bert_model", local_files_only=True)
+    model.eval()
+    return tokenizer, model
 
-# Load model config and weights manually from .safetensors
-config = BertConfig.from_pretrained("./bert_model")
-model = BertForSequenceClassification(config)
-state_dict = load_file("./bert_model/model.safetensors")
-model.load_state_dict(state_dict)
-model.eval()
+tokenizer, model = load_model()
 
-# Reverse label mapping
+# Label mapping
 label_map = {0: "Positive", 1: "Negative", 2: "Neutral"}
 
 # App UI
@@ -38,14 +34,16 @@ if st.button("🔍 Analyze Sentiment"):
     if not review.strip():
         st.warning("Please enter a review.")
     else:
-        cleaned_review = clean_text_for_bert(review)
-        inputs = tokenizer(cleaned_review, return_tensors="pt", truncation=True, padding=True, max_length=128)
+        try:
+            cleaned_review = clean_text_for_bert(review)
+            inputs = tokenizer(cleaned_review, return_tensors="pt", truncation=True, padding=True, max_length=128)
 
-        with torch.no_grad():
-            outputs = model(**inputs)
-            probs = torch.nn.functional.softmax(outputs.logits, dim=1)
-            pred = torch.argmax(probs, dim=1).item()
-            confidence = probs[0][pred].item()
+            with torch.no_grad():
+                outputs = model(**inputs)
+                probs = torch.nn.functional.softmax(outputs.logits, dim=1)
+                pred = torch.argmax(probs, dim=1).item()
+                confidence = probs[0][pred].item()
 
-        st.success(f"**Predicted Sentiment:** {label_map[pred]}  \n"
-                   f"**Confidence:** {confidence:.2f}")
+            st.success(f"**Predicted Sentiment:** {label_map[pred]}  \n**Confidence:** {confidence:.2f}")
+        except Exception as e:
+            st.error(f"⚠️ Error during prediction: {str(e)}")
